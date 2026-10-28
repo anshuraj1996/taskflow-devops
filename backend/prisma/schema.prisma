@@ -1,0 +1,140 @@
+// TaskFlow relational schema (PostgreSQL).
+// Indexes are chosen to match the actual query patterns in src/modules/*/ *.service.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+// Declaration order is the sort order in PostgreSQL enums.
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActivityAction {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  ASSIGNED
+  DELETED
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(100)
+  email        String   @unique @db.VarChar(255) // stored lower-cased
+  passwordHash String   @map("password_hash")
+  role         Role     @default(MEMBER)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  ownedProjects Project[]       @relation("ProjectOwner")
+  memberships   ProjectMember[]
+  assignedTasks Task[]          @relation("TaskAssignee")
+  createdTasks  Task[]          @relation("TaskCreator")
+  activities    TaskActivity[]
+
+  @@map("users")
+}
+
+model Project {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String        @db.VarChar(120)
+  description String        @default("") @db.VarChar(2000)
+  ownerId     String        @map("owner_id") @db.Uuid
+  status      ProjectStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  owner      User            @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members    ProjectMember[]
+  tasks      Task[]
+  activities TaskActivity[]
+
+  @@index([ownerId])
+  @@index([status, updatedAt(sort: Desc)])
+  @@map("projects")
+}
+
+// Replaces the document-model `memberIds: [ObjectId]` with a join table.
+// The owner is always stored as a member, so access checks are a single lookup.
+model ProjectMember {
+  projectId String   @map("project_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  joinedAt  DateTime @default(now()) @map("joined_at") @db.Timestamptz(3)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId]) // "is user X a member of project Y" + list members of a project
+  @@index([userId]) // "which projects can user X see"
+  @@map("project_members")
+}
+
+model Task {
+  id           String       @id @default(uuid()) @db.Uuid
+  title        String       @db.VarChar(200)
+  description  String       @default("") @db.VarChar(5000)
+  projectId    String       @map("project_id") @db.Uuid
+  assignedToId String?      @map("assigned_to_id") @db.Uuid
+  createdById  String       @map("created_by_id") @db.Uuid
+  status       TaskStatus   @default(TODO)
+  priority     TaskPriority @default(MEDIUM)
+  dueDate      DateTime?    @map("due_date") @db.Timestamptz(3)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  project    Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedTo User?          @relation("TaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy  User           @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  activities TaskActivity[]
+
+  @@index([projectId, status]) // task board + per-project status counts
+  @@index([projectId, createdAt(sort: Desc)]) // default task list ordering
+  @@index([assignedToId, status]) // "my open tasks"
+  @@index([dueDate, status]) // overdue counts
+  @@map("tasks")
+}
+
+model TaskActivity {
+  id        String         @id @default(uuid()) @db.Uuid
+  taskId    String?        @map("task_id") @db.Uuid
+  projectId String         @map("project_id") @db.Uuid
+  actorId   String         @map("actor_id") @db.Uuid
+  action    ActivityAction
+  details   Json?
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  task    Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actor   User    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt(sort: Desc)]) // recent activity feed
+  @@index([taskId])
+  @@map("task_activities")
+}

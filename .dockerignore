@@ -1,0 +1,27 @@
+# Build context is the repo root: send only what the images need.
+
+# Dependencies and build output are recreated inside the image
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+
+# Secrets must never reach an image
+**/.env
+**/.env.*
+
+# VCS, editor and OS files
+.git
+.gitignore
+.vscode
+.idea
+**/*.log
+**/.DS_Store
+
+# Not needed at build time
+docs
+scripts
+README.md
+docker-compose.yml
+**/Dockerfile
+.dockerignore

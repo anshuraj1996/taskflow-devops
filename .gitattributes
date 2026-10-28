@@ -1,0 +1,5 @@
+# Store text files with LF so Dockerfiles, shell scripts and YAML behave the same on every OS and in CI.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
