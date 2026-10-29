@@ -5,13 +5,15 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
 
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -19,9 +21,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    permissions:
+      contents: read
+      packages: write
+
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
@@ -62,6 +68,7 @@ jobs:
             type=sha,prefix=sha-
             type=ref,event=branch
             type=ref,event=pr
+            type=semver,pattern={{version}}
           labels: |
             org.opencontainers.image.title=${{ matrix.name }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -85,11 +92,11 @@ jobs:
         env:
           IMAGE_TAG: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           DATABASE_URL: postgresql://test_user:test_password@postgres:5432/app_test
+          NETWORK: ${{ job.services.postgres.network }}
         run: |
           set -Eeuo pipefail
 
           CONTAINER_NAME="api-smoke"
-          NETWORK="${{ job.services.postgres.network }}"
 
           cleanup() {
             docker logs "$CONTAINER_NAME" 2>&1 || true
@@ -126,3 +133,38 @@ jobs:
           echo "API did not become ready within 60 seconds."
           cleanup
           exit 1
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Docker image to GHCR
+        id: push
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+      - name: Record published image digest
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE: ${{ matrix.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          {
+            echo "### Published Docker image"
+            echo ""
+            echo "- Image: \`$IMAGE\`"
+            echo "- Digest: \`$DIGEST\`"
+            echo "- Immutable reference: \`$IMAGE@$DIGEST\`"
+          } >> "$GITHUB_STEP_SUMMARY"
