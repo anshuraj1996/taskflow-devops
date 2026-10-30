@@ -31,14 +31,20 @@ FROM ${NODE_IMAGE} AS prod-deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/
-# --ignore-scripts: the prisma CLI (a devDependency) is not installed here,
-# so the generated client is copied from the build stage instead.
-RUN npm ci -w backend --omit=dev --ignore-scripts && npm cache clean --force
+# --ignore-scripts: the generated client is copied from the build stage instead.
+# npm still installs the prisma CLI as an optional peer of @prisma/client; only the
+# migrate stage needs it, so it is deleted here and never reaches the runtime image.
+RUN npm ci -w backend --omit=dev --ignore-scripts \
+  && rm -rf node_modules/prisma node_modules/@prisma/config node_modules/deepmerge-ts \
+  && npm cache clean --force
 
 # ---- stage 3: runtime ----
 FROM ${NODE_IMAGE} AS runtime
 # Prisma's query engine needs OpenSSL on Alpine.
-RUN apk add --no-cache openssl
+# npm and yarn are never used at runtime; removing them drops their bundled CVEs.
+RUN apk add --no-cache openssl \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+     /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=4000

@@ -15,7 +15,7 @@ RUN npm run build -w frontend
 
 # ---- stage 2: runtime ----
 # Unprivileged variant runs as a non-root user and listens on 8080.
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.30-alpine AS runtime
 
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
