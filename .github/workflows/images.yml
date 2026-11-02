@@ -51,6 +51,12 @@ jobs:
             dockerfile: frontend/Dockerfile
             image: ghcr.io/anshuraj1996/taskflow-web
 
+          - name: migrate
+            dockerfile: backend/Dockerfile
+            target: migrate
+            image: ghcr.io/anshuraj1996/taskflow-migrate
+            trivyignores: backend/migrate.trivyignore
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -78,6 +84,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           push: false
           load: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -133,6 +140,22 @@ jobs:
           cleanup
           exit 1
 
+      - name: Smoke test migrate
+        if: matrix.name == 'migrate'
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          DATABASE_URL: postgresql://test_user:test_password@postgres:5432/app_test
+          NETWORK: ${{ job.services.postgres.network }}
+        run: |
+          set -Eeuo pipefail
+
+          # Apply every migration to the empty service database; a non-zero exit fails the job.
+          docker run --rm \
+            --network "$NETWORK" \
+            -e DATABASE_URL="$DATABASE_URL" \
+            "$IMAGE_TAG"
+
       - name: Trivy image vulnerability gate
         id: trivy-image-gate
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -141,6 +164,7 @@ jobs:
           image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+          trivyignores: ${{ matrix.trivyignores }}
           exit-code: '1'
 
       - name: Generate Trivy image SARIF
@@ -152,6 +176,7 @@ jobs:
           image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+          trivyignores: ${{ matrix.trivyignores }}
           format: sarif
           output: trivy-image-${{ matrix.name }}.sarif
           exit-code: '0'
@@ -186,6 +211,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

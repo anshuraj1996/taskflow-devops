@@ -21,10 +21,28 @@ COPY backend/tsconfig.json backend/tsconfig.build.json backend/
 COPY backend/src backend/src
 RUN npm run build -w backend
 
-# ---- migrate: one-off job (docker compose target) ----
-# Reuses the build stage, which has the Prisma CLI and the migrations folder.
-FROM build AS migrate
-CMD ["npx", "prisma", "migrate", "deploy", "--schema=backend/prisma/schema.prisma"]
+# ---- migrate: one-off job (Kubernetes Job, docker compose target) ----
+# Production dependencies plus the Prisma CLI (npm installs it as an optional peer of
+# @prisma/client), the schema and the migrations. No app code and no dev tooling.
+FROM ${NODE_IMAGE} AS migrate
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY backend/package.json backend/
+COPY backend/prisma backend/prisma
+COPY backend/prisma.config.ts backend/
+# Install scripts stay enabled: @prisma/engines downloads the schema engine in postinstall.
+# npm and yarn are removed afterwards; the job never calls them.
+RUN apk upgrade --no-cache \
+  && apk add --no-cache openssl \
+  && npm ci -w backend --omit=dev --include-workspace-root=false \
+  && npm cache clean --force \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+     /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
+# No update checks from inside the cluster.
+ENV CHECKPOINT_DISABLE=1
+USER node
+# The .bin shim is a node script, so npx is not needed.
+CMD ["node_modules/.bin/prisma", "migrate", "deploy", "--schema=backend/prisma/schema.prisma"]
 
 # ---- stage 2: production dependencies only ----
 FROM ${NODE_IMAGE} AS prod-deps

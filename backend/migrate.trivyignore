@@ -1,0 +1,8 @@
+# Accepted risks for the taskflow-migrate image only (see trivyignores in images.yml).
+# Each entry needs a reason and an expiry date; the gate fails again once it expires.
+
+# deepmerge-ts 7.1.5 (HIGH, stack exhaustion on recursive object graphs), fixed in 8.0.0.
+# It comes with the Prisma 6 CLI (via @prisma/config), which this image exists to run;
+# the fix needs a Prisma upgrade. Prisma only merges its own config here, never user
+# input, and the image runs as a one-off Job with no listening port.
+CVE-2026-40345 exp:2027-02-01
