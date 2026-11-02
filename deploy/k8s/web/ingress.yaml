@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  namespace: taskflow
+  labels:
+    app.kubernetes.io/part-of: taskflow
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/name: web
+
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: taskflow.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  name: http
