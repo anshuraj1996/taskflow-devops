@@ -51,6 +51,11 @@ jobs:
             dockerfile: frontend/Dockerfile
             image: ghcr.io/anshuraj1996/taskflow-web
 
+          - name: migrate
+            dockerfile: backend/Dockerfile
+            target: migrate
+            image: ghcr.io/anshuraj1996/taskflow-migrate
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -78,6 +83,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           push: false
           load: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -186,6 +192,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
