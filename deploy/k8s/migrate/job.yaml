@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate
+  namespace: taskflow
+  labels:
+    app.kubernetes.io/part-of: taskflow
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/name: migrate
+
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: taskflow
+        app.kubernetes.io/managed-by: kubectl
+        app.kubernetes.io/name: migrate
+
+    spec:
+      restartPolicy: Never
+
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: migrate
+          image: ghcr.io/anshuraj1996/taskflow-migrate:main
+          imagePullPolicy: Always
+
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: api-secret
+                  key: DATABASE_URL
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
