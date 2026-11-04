@@ -79,12 +79,19 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
 
+      # A new value each day invalidates the cached `apk upgrade` layers, so images pick
+      # up Alpine security fixes instead of reusing a stale layer from the build cache.
+      - name: Daily refresh key for OS packages
+        id: refresh
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
       - name: Build Docker image
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
           target: ${{ matrix.target }}
+          build-args: APK_REFRESH=${{ steps.refresh.outputs.day }}
           push: false
           load: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -212,6 +219,7 @@ jobs:
           context: .
           file: ${{ matrix.dockerfile }}
           target: ${{ matrix.target }}
+          build-args: APK_REFRESH=${{ steps.refresh.outputs.day }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
