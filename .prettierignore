@@ -3,3 +3,5 @@ dist
 coverage
 package-lock.json
 backend/prisma/migrations
+# Helm templates are Go templates, not plain YAML; `helm lint` checks them instead.
+deploy/helm/*/templates/

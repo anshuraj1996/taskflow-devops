@@ -1,0 +1,8 @@
+# Minikube overrides, used together with values.yaml:
+#   helm upgrade --install taskflow deploy/helm/taskflow -n taskflow \
+#     -f deploy/helm/taskflow/values-dev.yaml -f deploy/helm/taskflow/values-local.yaml
+
+postgres:
+  # Minikube's default hostPath storage ignores fsGroup, so postgres (uid 70) cannot
+  # write to it; local-path creates directories that non-root pods can use.
+  storageClass: local-path
