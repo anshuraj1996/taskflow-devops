@@ -79,3 +79,26 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+  helm:
+    name: Helm lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Helm lint
+        run: |
+          helm lint deploy/helm/taskflow \
+            -f deploy/helm/taskflow/values-dev.yaml \
+            --set secrets.postgresPassword=ci \
+            --set secrets.jwtSecret=ci-not-a-real-secret-0123456789abcdef
+
+      - name: Helm template
+        run: |
+          helm template taskflow deploy/helm/taskflow \
+            -f deploy/helm/taskflow/values-dev.yaml \
+            --set secrets.postgresPassword=ci \
+            --set secrets.jwtSecret=ci-not-a-real-secret-0123456789abcdef
