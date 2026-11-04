@@ -1,0 +1,60 @@
+api:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/anshuraj1996/taskflow-api
+    tag: main
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+  config:
+    NODE_ENV: production
+    LOG_LEVEL: info
+    CORS_ORIGIN: 'http://taskflow.local'
+    JWT_EXPIRES_IN: 1d
+
+web:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/anshuraj1996/taskflow-web
+    tag: main
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+migrate:
+  image:
+    repository: ghcr.io/anshuraj1996/taskflow-migrate
+    tag: main
+    pullPolicy: Always
+
+postgres:
+  image:
+    repository: postgres
+    tag: 16-alpine
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  storage: 1Gi
+  # Empty = the cluster's default StorageClass.
+  storageClass: ''
+
+ingress:
+  className: nginx
+  host: taskflow.local
+
+secrets:
+  postgresPassword: ''
+  jwtSecret: ''

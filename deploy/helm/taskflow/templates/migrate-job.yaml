@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate
+  annotations:
+    # Runs after the first install (postgres and api-secret exist by then) and before
+    # every upgrade, so new api code never starts against an old schema.
+    helm.sh/hook: post-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    {{- include "taskflow.labels" . | nindent 4 }}
+    app.kubernetes.io/name: migrate
+
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+
+  template:
+    metadata:
+      labels:
+        {{- include "taskflow.labels" . | nindent 8 }}
+        app.kubernetes.io/name: migrate
+
+    spec:
+      restartPolicy: Never
+
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: migrate
+          image: "{{ .Values.migrate.image.repository }}:{{ .Values.migrate.image.tag }}"
+          imagePullPolicy: {{ .Values.migrate.image.pullPolicy }}
+
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: api-secret
+                  key: DATABASE_URL
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir: {}

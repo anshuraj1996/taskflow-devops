@@ -25,3 +25,4 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 deploy/k8s/api/secret.yaml
+deploy/helm/taskflow/values-local.yaml
