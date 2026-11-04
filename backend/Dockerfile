@@ -32,6 +32,8 @@ COPY backend/prisma backend/prisma
 COPY backend/prisma.config.ts backend/
 # Install scripts stay enabled: @prisma/engines downloads the schema engine in postinstall.
 # npm and yarn are removed afterwards; the job never calls them.
+# APK_REFRESH (the date, set by CI) forces a daily rebuild so Alpine fixes are picked up.
+ARG APK_REFRESH
 RUN apk upgrade --no-cache \
   && apk add --no-cache openssl \
   && npm ci -w backend --omit=dev --include-workspace-root=false \
@@ -60,7 +62,10 @@ RUN npm ci -w backend --omit=dev --ignore-scripts \
 FROM ${NODE_IMAGE} AS runtime
 # Prisma's query engine needs OpenSSL on Alpine.
 # npm and yarn are never used at runtime; removing them drops their bundled CVEs.
-RUN apk add --no-cache openssl \
+# APK_REFRESH (the date, set by CI) forces a daily rebuild so Alpine fixes are picked up.
+ARG APK_REFRESH
+RUN apk upgrade --no-cache \
+  && apk add --no-cache openssl \
   && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
      /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 WORKDIR /app

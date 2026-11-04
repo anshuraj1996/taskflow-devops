@@ -19,6 +19,9 @@ FROM nginxinc/nginx-unprivileged:1.30-alpine AS runtime
 
 # Pull Alpine security fixes released after the base image was built.
 # The image runs as uid 101, so switch to root for apk and back afterwards.
+# CI sets APK_REFRESH to the current date, so this layer is rebuilt at least daily
+# instead of being reused from an old build cache.
+ARG APK_REFRESH
 USER root
 RUN apk upgrade --no-cache
 USER 101
