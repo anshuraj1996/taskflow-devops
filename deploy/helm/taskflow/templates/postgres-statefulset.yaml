@@ -21,6 +21,7 @@ spec:
         app.kubernetes.io/name: postgres
 
     spec:
+      serviceAccountName: postgres
       securityContext:
         runAsNonRoot: true
         runAsUser: 70
