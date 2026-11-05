@@ -8,7 +8,10 @@ metadata:
     app.kubernetes.io/name: api
 
 spec:
+  {{- if not .Values.api.autoscaling.enabled }}
   replicas: {{ .Values.api.replicaCount }}
+  {{- end }}
+
 
   selector:
     matchLabels:
