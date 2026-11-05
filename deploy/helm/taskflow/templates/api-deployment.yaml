@@ -25,7 +25,7 @@ spec:
 
     spec:
       terminationGracePeriodSeconds: 30
-
+      serviceAccountName: api
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000

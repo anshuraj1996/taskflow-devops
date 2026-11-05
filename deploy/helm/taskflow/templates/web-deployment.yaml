@@ -22,7 +22,7 @@ spec:
 
     spec:
       terminationGracePeriodSeconds: 30
-
+      serviceAccountName: web
       securityContext:
         runAsUser: 101
         runAsGroup: 101
