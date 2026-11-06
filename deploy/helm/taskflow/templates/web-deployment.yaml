@@ -23,6 +23,14 @@ spec:
     spec:
       terminationGracePeriodSeconds: 30
       serviceAccountName: web
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: web
+
       securityContext:
         runAsUser: 101
         runAsGroup: 101

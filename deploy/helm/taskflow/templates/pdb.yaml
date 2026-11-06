@@ -1,0 +1,28 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api
+  labels:
+    {{- include "taskflow.labels" . | nindent 4 }}
+    app.kubernetes.io/name: api
+
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web
+  labels:
+    {{- include "taskflow.labels" . | nindent 4 }}
+    app.kubernetes.io/name: web
+
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: web
