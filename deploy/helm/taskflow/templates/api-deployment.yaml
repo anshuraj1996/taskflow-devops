@@ -13,6 +13,12 @@ spec:
   {{- end }}
 
 
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
   selector:
     matchLabels:
       app.kubernetes.io/name: api
@@ -49,6 +55,11 @@ spec:
         - name: api
           image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
           imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 5
+
 
           ports:
             - name: http
