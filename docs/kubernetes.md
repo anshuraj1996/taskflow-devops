@@ -33,6 +33,21 @@ kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8081:80
 
 The app is then served at http://taskflow.local:8081 (with `127.0.0.1 taskflow.local` in the hosts file). Restart the port-forward after any upgrade that restarts pods.
 
+### Deploy by digest
+
+Tags like `:main` move with every merge, so the same command can deploy different code on different days. To run exactly the images that passed CI and Trivy, set each image's `digest`. It wins over the tag. The digests are in the "Published Docker image" summary of the CI run, or can be read from GHCR without pulling anything:
+
+```powershell
+$api = docker buildx imagetools inspect ghcr.io/anshuraj1996/taskflow-api:main --format '{{.Manifest.Digest}}'
+$web = docker buildx imagetools inspect ghcr.io/anshuraj1996/taskflow-web:main --format '{{.Manifest.Digest}}'
+$migrate = docker buildx imagetools inspect ghcr.io/anshuraj1996/taskflow-migrate:main --format '{{.Manifest.Digest}}'
+helm upgrade --install taskflow deploy/helm/taskflow -n taskflow `
+  -f deploy/helm/taskflow/values-dev.yaml -f deploy/helm/taskflow/values-local.yaml `
+  --set api.image.digest=$api --set web.image.digest=$web --set migrate.image.digest=$migrate --wait
+```
+
+Helm 4 uses server-side apply. If a field was changed with `kubectl` (for example `kubectl set image`), the upgrade fails with a field-manager conflict. Add `--force-conflicts` once to give the field back to Helm.
+
 ## Failure drills
 
 Each drill ran on a 3-node Minikube cluster (v1.35) while a probe pod requested `/health/ready` through the web Service 10 times per second. The probe ran in the `ingress-nginx` namespace, because the NetworkPolicies only let that namespace reach web.

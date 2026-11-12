@@ -34,7 +34,7 @@ spec:
 
       containers:
         - name: migrate
-          image: "{{ .Values.migrate.image.repository }}:{{ .Values.migrate.image.tag }}"
+          image: {{ include "taskflow.image" .Values.migrate.image | quote }}
           imagePullPolicy: {{ .Values.migrate.image.pullPolicy }}
 
           env:

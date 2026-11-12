@@ -9,6 +9,8 @@ api:
   image:
     repository: ghcr.io/anshuraj1996/taskflow-api
     tag: main
+    # sha256:... from the CI run summary; when set, it wins over the tag.
+    digest: ''
     pullPolicy: Always
   resources:
     requests:
@@ -28,6 +30,7 @@ web:
   image:
     repository: ghcr.io/anshuraj1996/taskflow-web
     tag: main
+    digest: ''
     pullPolicy: Always
   resources:
     requests:
@@ -40,6 +43,7 @@ migrate:
   image:
     repository: ghcr.io/anshuraj1996/taskflow-migrate
     tag: main
+    digest: ''
     pullPolicy: Always
 
 postgres:
